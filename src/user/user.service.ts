@@ -13,6 +13,22 @@ export class UserService {
     })
   }
 
+  async getByEmail(email: string): Promise<User | null> {
+    return this.prisma.user.findFirst({
+      where: {
+        email: email,
+      },
+    })
+  }
+
+  async getFirstByFilter(filter: Prisma.UserWhereInput): Promise<User | null> {
+    return this.prisma.user.findFirst({
+      where: {
+        ...filter,
+      },
+    })
+  }
+
   async create(data: Prisma.UserCreateInput): Promise<TUserResponse> {
     return this.prisma.user.create({
       data,
@@ -21,14 +37,6 @@ export class UserService {
         email: true,
         firstName: true,
         surname: true,
-      },
-    })
-  }
-
-  async getByEmail(email: string): Promise<User | null> {
-    return this.prisma.user.findFirst({
-      where: {
-        email: email,
       },
     })
   }

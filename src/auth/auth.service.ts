@@ -1,10 +1,11 @@
 import {
   ConflictException,
   Injectable,
+  NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common'
-import { User } from '@prisma/client'
-import { AST } from 'eslint'
+import { Prisma, User } from '@prisma/client'
+import * as express from 'express'
 import { TokenService } from '../token/token.service'
 import { UserService } from '../user/user.service'
 import { TUserResponse } from '../user/user.types'
@@ -47,15 +48,11 @@ export class AuthService {
   }
 
   async login({ email, password }: AuthDto): Promise<ILoginResponse> {
-    const existingUser: User | null = await this.userService.getByEmail(email)
+    const user: User = await this.validateUser({ email })
 
-    if (!existingUser) {
-      throw new UnauthorizedException('User does not exist')
-    }
-
-    const isVerify: boolean = await this.passwordService.verifyPassword(
+    const isVerify = await this.passwordService.verifyPassword(
       password,
-      existingUser.passwordHash
+      user.passwordHash
     )
 
     if (!isVerify) {
@@ -63,26 +60,57 @@ export class AuthService {
     }
 
     const { accessToken, refreshToken } = await this.jwtStrategy.createTokens(
-      existingUser.id
+      user.id
     )
 
     await this.tokenService.createToken({
       refreshToken,
-      user: { connect: { id: existingUser.id } },
+      user: { connect: { id: user.id } },
     })
 
-    return { accessToken: accessToken, refreshToken: refreshToken }
+    return { accessToken, refreshToken }
   }
 
-  async getNewTokens(refreshToken: string): Promise<string> {
+  private async validateUser(filter: Prisma.UserWhereInput): Promise<User> {
+    const existingUser: User | null = await this.userService.getFirstByFilter({
+      ...filter,
+    })
+
+    if (!existingUser) {
+      throw new NotFoundException('User does not exist')
+    }
+
+    return existingUser
+  }
+
+  async getNewTokens(refreshToken: string) {
     const result = await this.jwtStrategy.verify(refreshToken)
 
     if (!result) {
       throw new UnauthorizedException('Invalid refresh token')
     }
 
-    return await this.jwtStrategy.createAssessToken({
-      sub: result.sub,
+    const user = await this.validateUser({ id: result.sub })
+
+    return await this.jwtStrategy.createAssessToken({ sub: user.id })
+  }
+
+  addRefreshTokenToResponse(response: express.Response, refreshToken: string) {
+    response.cookie(this.REFRESH_TOKEN_NAME, refreshToken, {
+      httpOnly: true,
+      domain: 'localhost',
+      secure: true,
+      sameSite: 'none',
+      path: '/api/auth',
+    })
+  }
+
+  removeRefreshTokenFromResponse(response: express.Response) {
+    response.cookie(this.REFRESH_TOKEN_NAME, '', {
+      httpOnly: true,
+      domain: 'localhost',
+      secure: true,
+      sameSite: 'none',
     })
   }
 }
