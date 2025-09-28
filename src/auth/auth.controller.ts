@@ -5,13 +5,13 @@ import {
   HttpStatus,
   Post,
   Req,
+  Res,
   UnauthorizedException,
 } from '@nestjs/common'
 import * as express from 'express'
 import { TUserResponse } from '../user/user.types'
 import { AuthService } from './auth.service'
 import { AuthDto, RegisterDto } from './dto/auth.dto'
-import { ILoginResponse } from './types/auth.types'
 
 @Controller('auth')
 export class AuthController {
@@ -25,24 +25,38 @@ export class AuthController {
 
   @HttpCode(HttpStatus.OK)
   @Post('login')
-  async signInUser(@Body() userData: AuthDto): Promise<ILoginResponse> {
-    return await this.authService.login(userData)
+  async signInUser(
+    @Body() userData: AuthDto,
+    @Res({ passthrough: true }) response: express.Response
+  ): Promise<{ accessToken: string }> {
+    const { accessToken, refreshToken } = await this.authService.login(userData)
+    this.authService.addRefreshTokenToResponse(response, refreshToken)
+    return { accessToken }
   }
 
   @HttpCode(HttpStatus.OK)
   @Post('refresh')
-  async refreshToken(@Req() request: express.Request): Promise<ILoginResponse> {
+  async refreshToken(
+    @Req() request: express.Request,
+    @Res({ passthrough: true }) response: express.Response
+  ): Promise<{ accessToken: string }> {
     const refreshTokenFromCookies: string =
       request.cookies[this.authService.REFRESH_TOKEN_NAME]
 
     if (!refreshTokenFromCookies) {
+      this.authService.removeRefreshTokenFromResponse(response)
       throw new UnauthorizedException('Refresh token not passed')
     }
-
     const accessToken = await this.authService.getNewTokens(
       refreshTokenFromCookies
     )
+    return { accessToken }
+  }
 
-    return { accessToken, refreshToken: refreshTokenFromCookies }
+  @HttpCode(200)
+  @Post('logout')
+  async logout(@Res({ passthrough: true }) response: express.Response) {
+    this.authService.removeRefreshTokenFromResponse(response)
+    return true
   }
 }
