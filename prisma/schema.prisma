@@ -24,6 +24,7 @@ model User {
   updatedAt DateTime @updatedAt @map("update_at")
 
   sessions Tokens[]
+  dashboards Dashboards[]
 
   @@index([email])
   @@map("users")
@@ -40,4 +41,19 @@ model Tokens {
   updatedAt DateTime @updatedAt @map("update_at")
 
   @@map("tokens")
+}
+
+model Dashboards {
+  id     String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title  String
+
+  isArchived Boolean  @default(false) @map("is_archived")
+  createdAt DateTime @default(now()) @map("create_at")
+  updatedAt DateTime @updatedAt @map("update_at")
+
+  @@unique([userId, title])
+  @@map("dashboards")
 }
