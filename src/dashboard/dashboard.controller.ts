@@ -8,12 +8,14 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common'
 import type { Dashboards, User } from '@prisma/client'
 import { CurrentUser } from '../auth/decorator/auth.decorator'
 import { AuthGuard } from '../auth/guard/auth.guard'
 import { DashboardService } from './dashboard.service'
+import { IDashboardResponse } from './dashboard.types'
 import { CreateDashboardDto } from './dto/create-dashboard.dto'
 import { UpdateDashboardDto } from './dto/update-dashboard.dto'
 
@@ -25,13 +27,17 @@ export class DashboardController {
   @HttpCode(HttpStatus.CREATED)
   @Post()
   async createDashboard(
+    @Query('isCreateTimeBlock') isCreateTimeBlock: boolean = false,
     @Body() dashboardData: CreateDashboardDto,
     @CurrentUser() user: User
   ): Promise<Dashboards> {
-    return await this.dashboardService.create({
-      title: dashboardData.title,
-      user: { connect: user },
-    })
+    return await this.dashboardService.create(
+      {
+        title: dashboardData.title,
+        user: { connect: user },
+      },
+      isCreateTimeBlock
+    )
   }
 
   @HttpCode(HttpStatus.OK)
@@ -45,7 +51,7 @@ export class DashboardController {
   async getDashboard(
     @Param('id') id: string,
     @CurrentUser('id') userId: string
-  ): Promise<Dashboards | null> {
+  ): Promise<IDashboardResponse> {
     return await this.dashboardService.findOne(id, { userId })
   }
 

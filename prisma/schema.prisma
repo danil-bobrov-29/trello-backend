@@ -51,9 +51,43 @@ model Dashboards {
   title  String
 
   isArchived Boolean  @default(false) @map("is_archived")
+
+  timeBlocks TimeBlock[]
+
   createdAt DateTime @default(now()) @map("create_at")
   updatedAt DateTime @updatedAt @map("update_at")
 
   @@unique([userId, title])
   @@map("dashboards")
+}
+
+model TimeBlock {
+  id     String @id @default(uuid()) @db.Uuid
+  title   String
+  order   Int
+
+  dashboardId String @map("dashboard_id") @db.Uuid
+  dashboard   Dashboards @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
+  cards       Card[]
+
+  createdAt DateTime @default(now()) @map("create_at")
+  updatedAt DateTime @updatedAt @map("update_at")
+
+  @@map("time-blocks")
+}
+
+model Card {
+  id     String @id @default(uuid()) @db.Uuid
+  title       String
+  description String?
+  dueDate     DateTime? @map("due_date")
+  order       Int
+
+  timeBlockId     String  @map("time-block_id") @db.Uuid
+  timeBlock       TimeBlock     @relation(fields: [timeBlockId], references: [id])
+
+  createdAt DateTime @default(now()) @map("create_at")
+  updatedAt DateTime @updatedAt @map("update_at")
+
+  @@map("cards")
 }
