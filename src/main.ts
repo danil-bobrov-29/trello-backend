@@ -18,6 +18,11 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, documentFactory)
 
   app.use(cookieParser())
+  app.enableCors({
+    origin: [process.env.CLIENT_URL],
+    credentials: true,
+    exposedHeaders: 'set-cookie',
+  })
   app.setGlobalPrefix('api')
   app.useGlobalPipes(
     new ValidationPipe({
