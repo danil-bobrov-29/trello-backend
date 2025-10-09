@@ -4,56 +4,50 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { Dashboards, Prisma } from '@prisma/client'
-
+import { BaseService } from '../common/base.service'
 import { PrismaService } from '../prisma.service'
 import { createTimeBlockDefault } from '../time-block/time-block.data'
-import { IDashboardResponse } from './dashboard.types'
 import { UpdateDashboardDto } from './dto/update-dashboard.dto'
 
 @Injectable()
-export class DashboardService {
-  constructor(private prisma: PrismaService) {}
+export class DashboardService extends BaseService<
+  Dashboards,
+  Prisma.DashboardsCreateInput,
+  UpdateDashboardDto,
+  Prisma.DashboardsWhereInput
+> {
+  constructor(protected readonly prisma: PrismaService) {
+    super(prisma)
+  }
 
-  async create(
-    data: Prisma.DashboardsCreateInput,
-    isTimeBlock: boolean
+  get model() {
+    return this.prisma.dashboards
+  }
+
+  async createWithTimeBlocks(
+    data: Prisma.DashboardsCreateInput
   ): Promise<Dashboards> {
     try {
-      if (isTimeBlock) {
-        return await this.prisma.dashboards.create({
-          data: {
-            ...data,
-            timeBlocks: {
-              create: createTimeBlockDefault,
-            },
+      return await this.prisma.dashboards.create({
+        data: {
+          ...data,
+          timeBlocks: {
+            create: createTimeBlockDefault,
           },
-        })
-      }
-      return await this.prisma.dashboards.create({ data })
+        },
+      })
     } catch {
       throw new ConflictException('Conflict add dashboard')
     }
   }
 
-  async findAll(filters: Prisma.DashboardsWhereInput): Promise<Dashboards[]> {
-    return this.prisma.dashboards.findMany({ where: filters })
-  }
-
   async findOne(
     id: string,
     filters?: Omit<Prisma.DashboardsWhereInput, 'id'>
-  ): Promise<IDashboardResponse> {
-    const dashboard = await this.prisma.dashboards.findFirst({
-      where: {
-        id,
-        ...filters,
-      },
-      select: {
-        id: true,
-        title: true,
-        isArchived: true,
-        createdAt: true,
-        updatedAt: true,
+  ): Promise<Dashboards> {
+    const dashboard = await this.model.findFirst({
+      where: { id, ...filters },
+      include: {
         timeBlocks: true,
       },
     })
@@ -61,24 +55,6 @@ export class DashboardService {
     if (!dashboard) {
       throw new NotFoundException('Not Found Dashboard')
     }
-    return dashboard as IDashboardResponse
-  }
-
-  async update(
-    id: string,
-    updateDashboardDto: UpdateDashboardDto,
-    filters?: Prisma.DashboardsGetPayload<{ select: { id: false } }>
-  ) {
-    return this.prisma.dashboards.update({
-      where: {
-        id,
-        ...filters,
-      },
-      data: updateDashboardDto,
-    })
-  }
-
-  async remove(id: string, filters?: Omit<Prisma.DashboardsWhereInput, 'id'>) {
-    return this.prisma.dashboards.delete({ where: { id: id, ...filters } })
+    return dashboard
   }
 }

@@ -11,7 +11,7 @@ export class JwtStrategy {
 
   async createAssessToken(payload: { sub: string }): Promise<string> {
     return await this.jwtService.signAsync(payload, {
-      expiresIn: this.configService.get('JWT_REFRESH_EXPIRES'),
+      expiresIn: this.configService.get('JWT_ACCESS_EXPIRES'),
     })
   }
 

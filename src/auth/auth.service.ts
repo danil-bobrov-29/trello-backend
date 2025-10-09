@@ -95,13 +95,19 @@ export class AuthService {
     return await this.jwtStrategy.createAssessToken({ sub: user.id })
   }
 
+  async isVerifyToken(token: string): Promise<boolean> {
+    const isVerify = await this.jwtStrategy.verify(token)
+
+    return !!isVerify
+  }
+
   addRefreshTokenToResponse(response: express.Response, refreshToken: string) {
     response.cookie(this.REFRESH_TOKEN_NAME, refreshToken, {
       httpOnly: true,
       domain: 'localhost',
       secure: true,
       sameSite: 'none',
-      path: '/api/auth',
+      path: '/',
     })
   }
 
@@ -109,8 +115,10 @@ export class AuthService {
     response.cookie(this.REFRESH_TOKEN_NAME, '', {
       httpOnly: true,
       domain: 'localhost',
+      expires: new Date(0),
       secure: true,
       sameSite: 'none',
+      path: '/',
     })
   }
 }

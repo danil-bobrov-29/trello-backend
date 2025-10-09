@@ -13,6 +13,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum TimeBlockColor {
+  BLUE
+  GREEN
+  RED
+  YELLOW
+  PURPLE
+  PINK
+  ORANGE
+  GRAY
+}
+
 model User {
   id           String @id @default(uuid()) @db.Uuid
   email        String @unique @db.Citext
@@ -49,6 +60,7 @@ model Dashboards {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   title  String
+  description String?
 
   isArchived Boolean  @default(false) @map("is_archived")
 
@@ -64,7 +76,9 @@ model Dashboards {
 model TimeBlock {
   id     String @id @default(uuid()) @db.Uuid
   title   String
+  description String?
   order   Int
+  color   TimeBlockColor @default(RED)
 
   dashboardId String @map("dashboard_id") @db.Uuid
   dashboard   Dashboards @relation(fields: [dashboardId], references: [id], onDelete: Cascade)
@@ -80,11 +94,12 @@ model Card {
   id     String @id @default(uuid()) @db.Uuid
   title       String
   description String?
-  dueDate     DateTime? @map("due_date")
+  dueDate     DateTime? @map("due_date") @db.Date
   order       Int
+  isCompleted Boolean  @default(false) @map("is_completed")
 
   timeBlockId     String  @map("time-block_id") @db.Uuid
-  timeBlock       TimeBlock     @relation(fields: [timeBlockId], references: [id])
+  timeBlock       TimeBlock     @relation(fields: [timeBlockId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now()) @map("create_at")
   updatedAt DateTime @updatedAt @map("update_at")

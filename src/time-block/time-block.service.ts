@@ -1,36 +1,50 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma, TimeBlock } from '@prisma/client'
-import { DashboardService } from '../dashboard/dashboard.service'
-import { UpdateDashboardDto } from '../dashboard/dto/update-dashboard.dto'
+import { BaseService } from '../common/base.service'
 import { PrismaService } from '../prisma.service'
-import { CreateTimeBlockDto } from './dto/time-block.dto'
+import { UpdateTimeBlockDto } from './dto/time-block.dto'
 
 @Injectable()
-export class TimeBlockService {
-  constructor(
-    private readonly prisma: PrismaService,
-    private dashboardService: DashboardService
-  ) {}
-
-  async create(data: CreateTimeBlockDto, userId: string): Promise<TimeBlock> {
-    await this.dashboardService.findOne(data.dashboardId, {
-      userId,
-    })
-
-    return this.prisma.timeBlock.create({ data })
+export class TimeBlockService extends BaseService<
+  TimeBlock,
+  Prisma.TimeBlockCreateInput,
+  UpdateTimeBlockDto,
+  Prisma.TimeBlockWhereInput
+> {
+  constructor(protected readonly prisma: PrismaService) {
+    super(prisma)
   }
 
-  async update(
+  get model() {
+    return this.prisma.timeBlock
+  }
+
+  async findOne(
     id: string,
-    updateDashboardDto: UpdateDashboardDto,
-    filters?: Prisma.TimeBlockGetPayload<{ select: { id: false } }>
-  ) {
-    return this.prisma.dashboards.update({
-      where: {
-        id,
-        ...filters,
+    filters?: Omit<Prisma.TimeBlockWhereInput, 'id'>
+  ): Promise<TimeBlock> {
+    const timeBlock = await this.model.findFirst({
+      where: { id, ...filters },
+      include: {
+        cards: true,
       },
-      data: updateDashboardDto,
+    })
+
+    if (!timeBlock) {
+      throw new NotFoundException('Not Found Time Block')
+    }
+    return timeBlock
+  }
+
+  async findAll(filters: Prisma.TimeBlockWhereInput): Promise<TimeBlock[]> {
+    return this.model.findMany({
+      where: filters,
+      include: {
+        cards: true,
+      },
+      orderBy: {
+        order: 'asc',
+      },
     })
   }
 }
